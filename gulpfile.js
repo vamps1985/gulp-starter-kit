@@ -1,17 +1,20 @@
-// В переменные получаем установленые пакеты
-var gulp = require('gulp');
-var browserSync = require('browser-sync').create();
-var sass = require('gulp-sass');
-var autoprefixer = require('gulp-autoprefixer');
-var cssnano = require('gulp-cssnano');
-var mmq = require('gulp-merge-media-queries');
-var del = require('del');
-var htmlmin = require('gulp-htmlmin');
-var imagemin = require('gulp-imagemin');
-var rigger = require('gulp-rigger');
+// В переменные получаем установленные пакеты
+const gulp = require('gulp');
+const browserSync = require('browser-sync').create();
+const sass = require('gulp-sass');
+const autoprefixer = require('gulp-autoprefixer');
+const cssnano = require('gulp-cssnano');
+const mmq = require('gulp-merge-media-queries');
+const del = require('del');
+const htmlmin = require('gulp-htmlmin');
+const imagemin = require('gulp-imagemin');
+const rigger = require('gulp-rigger');
+const concat = require('gulp-concat');
+const babel = require('gulp-babel');
+const uglify = require('gulp-uglify');
 
 // Создаем таск для сборки html файлов
-gulp.task('html', function () {
+gulp.task('html', () => {
   // Берем все файлы с расширением html в папке src
   return gulp.src('./src/*.html')
     // с помощью ригера собираем куски html файлов, если таковые есть (//= в index.html)
@@ -22,14 +25,14 @@ gulp.task('html', function () {
     }))
     // выкидываем html в папку dist
     .pipe(gulp.dest('./dist'))
-    // говорим browser-sync о том что пора перезагрузить барузер так как файл изменился
+    // говорим browser-sync о том что пора перезагрузить барузер, так как файл изменился
     .pipe(browserSync.reload({
       stream: true
     }));
 });
 
 // Создаем таск для сборки css файлов
-gulp.task('css', function () {
+gulp.task('css', () => {
   // Берем только файл styles.scss в папке src, в который импортируеются паршалы
   return gulp.src('./src/sass/main.scss')
     // Преобразовываем sass в css
@@ -54,15 +57,15 @@ gulp.task('css', function () {
 });
 
 // Создаем таск для оптимизации картинок
-gulp.task('img', function () {
+gulp.task('img', () => {
   // Берем все картинки из папки img
   return gulp.src('./src/images/**/*.+(png|jpg|gif|svg)')
     // Пробуем оптимизировать
     .pipe(imagemin(
       imagemin.svgo({
         plugins: [
-            {removeViewBox: true},
-            {cleanupIDs: false}
+          { removeViewBox: true },
+          { cleanupIDs: false }
         ]
       })))
     // Выкидываем в папку dist/img
@@ -74,7 +77,7 @@ gulp.task('img', function () {
 });
 
 // Таск копирования всех шрифтов из папки fonts в dist/fonts
-gulp.task('fonts', function () {
+gulp.task('fonts', () => {
   return gulp.src('./src/fonts/**/*.*')
     .pipe(gulp.dest('./dist/fonts'))
     // Говорим browser-sync о том что пора перезагрузить барузер так как файл изменился
@@ -82,9 +85,18 @@ gulp.task('fonts', function () {
       stream: true
     }));
 });
-
+gulp.task('js', () => {
+      return gulp.src('./src/js/**/*.*')
+      .pipe(concat('scripts.min.js'))
+      .pipe(babel({
+          presets: ['env']
+      }))
+      .pipe(uglify())
+      .pipe(gulp.dest('./dist/js'))
+      .pipe(browserSync.reload({stream: true}));
+  });
 // Таск слежения за изменениями файлов
-gulp.task('watch', function () {
+gulp.task('watch', () => {
   // Следим за изменениями в любом html файле и вызываем таск 'html' на каждом изменении
   gulp.watch('./src/**/*.html', ['html']);
   // Следим за изменениями в любом sass файле и вызываем таск 'css' на каждом изменении
@@ -93,10 +105,11 @@ gulp.task('watch', function () {
   gulp.watch('./src/images/**/*.*', ['img']);
   // Следим за изменениями в шрифтах и вызываем таск 'fonts' на каждом изменении
   gulp.watch('./src/fonts/**/*.*', ['fonts']);
+  gulp.watch('./src/js/**/*.*', ['js']);
 });
 
 // Таск создания и запуска веб-сервера
-gulp.task('server', function () {
+gulp.task('server', () => {
   browserSync.init({
     server: {
       // указываем из какой папки "поднимать" сервер
@@ -108,13 +121,16 @@ gulp.task('server', function () {
 });
 
 // Таск удаления папки dist, будем вызывать 1 раз перед началом сборки
-gulp.task('del:dist', function () {
+gulp.task('del:dist', () => {
   return del.sync('./dist');
 });
 
-// Таск который 1 раз собираем все статические файлы
-gulp.task('build', ['html', 'css', 'img', 'fonts']);
+// Таск который 1 раз собирает все статические файлы
+gulp.task('build', ['html', 'css', "js", 'img', 'fonts']);
 
-// Главный таск, сначала удаляет папку dist, потом собирает статику, после чего поднимает вервер и затем запускает слежение за файлами
+// Главный таск, сначала удаляет папку dist,
+// потом собирает статику, после чего поднимает сервер
+// и затем запускает слежение за файлами
 // Запускается из корня проекта командой npm start
-gulp.task('start', ['del:dist', 'build', 'server', 'watch']);
+// gulp.task('default', ['watcher', 'mincss', 'scripts']);
+gulp.task('default', ['del:dist', 'build', 'server', 'watch']);
